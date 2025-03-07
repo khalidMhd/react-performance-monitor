@@ -1,0 +1,30 @@
+# Source
+src/
+__tests__/
+
+# Config files
+.eslintrc
+.prettierrc
+jest.config.js
+tsconfig.json
+rollup.config.mjs
+
+# Development
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+
+# Example
+example/
+
+# Build
+dist/
+coverage/
+
+# Misc
+.DS_Store
+*.log
+.env
+.env.* 
