@@ -34,25 +34,16 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
-    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
-        if (ar || !(i in from)) {
-            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
-            ar[i] = from[i];
-        }
-    }
-    return to.concat(ar || Array.prototype.slice.call(from));
-};
 import { useEffect, useRef } from 'react';
-import { usePerformanceContext } from '../context/PerformanceContext';
+import { usePerformanceMonitorContext } from '../components/PerformanceMonitorContext';
 export var useNetworkMonitor = function (_a) {
     var componentName = _a.componentName;
-    var updateMetrics = usePerformanceContext().updateMetrics;
+    var updateNetworkMetrics = usePerformanceMonitorContext().updateNetworkMetrics;
     var originalFetch = useRef(global.fetch);
     useEffect(function () {
         var currentFetch = originalFetch.current;
         var fetchWithMetrics = function (input, init) { return __awaiter(void 0, void 0, void 0, function () {
-            var startTime, url, response, duration, networkRequest_1, error_1, duration, networkRequest_2;
+            var startTime, url, response, duration, networkRequest, error_1, duration, networkRequest;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -65,21 +56,21 @@ export var useNetworkMonitor = function (_a) {
                     case 2:
                         response = _a.sent();
                         duration = performance.now() - startTime;
-                        networkRequest_1 = {
+                        networkRequest = {
                             url: url,
                             method: (init === null || init === void 0 ? void 0 : init.method) || 'GET',
                             duration: duration,
                             status: response.status,
                             timestamp: Date.now(),
                         };
-                        updateMetrics(componentName, {
-                            networkRequests: function (prev) { return __spreadArray(__spreadArray([], (prev || []), true), [{ requests: [networkRequest_1] }], false); },
+                        updateNetworkMetrics({
+                            requests: [networkRequest]
                         });
                         return [2 /*return*/, response];
                     case 3:
                         error_1 = _a.sent();
                         duration = performance.now() - startTime;
-                        networkRequest_2 = {
+                        networkRequest = {
                             url: url,
                             method: (init === null || init === void 0 ? void 0 : init.method) || 'GET',
                             duration: duration,
@@ -87,8 +78,8 @@ export var useNetworkMonitor = function (_a) {
                             timestamp: Date.now(),
                             error: error_1 instanceof Error ? error_1.message : 'Unknown error',
                         };
-                        updateMetrics(componentName, {
-                            networkRequests: function (prev) { return __spreadArray(__spreadArray([], (prev || []), true), [{ requests: [networkRequest_2] }], false); },
+                        updateNetworkMetrics({
+                            requests: [networkRequest]
                         });
                         throw error_1;
                     case 4: return [2 /*return*/];
@@ -99,6 +90,6 @@ export var useNetworkMonitor = function (_a) {
         return function () {
             global.fetch = currentFetch;
         };
-    }, [componentName, updateMetrics]);
+    }, [componentName, updateNetworkMetrics]);
     return null;
 };

@@ -1,6 +1,6 @@
 {
   "name": "react-perf-mon",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A powerful React library for monitoring and analyzing application performance metrics in real-time",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

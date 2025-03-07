@@ -99,12 +99,15 @@ describe('useNetworkMonitor', function () {
         useNetworkMonitor({ componentName: 'TestComponent' });
         return _jsx("div", { children: "Test Component" });
     };
+    var renderWithProvider = function (component) {
+        return render(_jsx(PerformanceMonitorProvider, { children: component }));
+    };
     it('should track network requests', function () { return __awaiter(void 0, void 0, void 0, function () {
         var container;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
-                    container = render(_jsx(PerformanceMonitorProvider, { children: _jsx(TestComponent, {}) })).container;
+                    container = renderWithProvider(_jsx(TestComponent, {})).container;
                     // Make a network request
                     return [4 /*yield*/, act(function () { return __awaiter(void 0, void 0, void 0, function () {
                             return __generator(this, function (_a) {
@@ -133,7 +136,7 @@ describe('useNetworkMonitor', function () {
                         return Promise.reject(new Error('Network error'));
                     });
                     global.fetch = mockFetchError;
-                    container = render(_jsx(PerformanceMonitorProvider, { children: _jsx(TestComponent, {}) })).container;
+                    container = renderWithProvider(_jsx(TestComponent, {})).container;
                     return [4 /*yield*/, act(function () { return __awaiter(void 0, void 0, void 0, function () {
                             var error_1;
                             return __generator(this, function (_a) {
@@ -159,7 +162,7 @@ describe('useNetworkMonitor', function () {
         });
     }); }, 1000);
     it('should restore original fetch on unmount', function () {
-        var unmount = render(_jsx(PerformanceMonitorProvider, { children: _jsx(TestComponent, {}) })).unmount;
+        var unmount = renderWithProvider(_jsx(TestComponent, {})).unmount;
         var currentFetch = global.fetch;
         unmount();
         expect(global.fetch).not.toBe(currentFetch);
