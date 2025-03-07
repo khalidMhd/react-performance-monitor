@@ -79,12 +79,16 @@ describe('useNetworkMonitor', () => {
     return <div>Test Component</div>;
   };
 
-  it('should track network requests', async () => {
-    const { container } = render(
+  const renderWithProvider = (component: React.ReactElement) => {
+    return render(
       <PerformanceMonitorProvider>
-        <TestComponent />
+        {component}
       </PerformanceMonitorProvider>
     );
+  };
+
+  it('should track network requests', async () => {
+    const { container } = renderWithProvider(<TestComponent />);
 
     // Make a network request
     await act(async () => {
@@ -100,11 +104,7 @@ describe('useNetworkMonitor', () => {
     ) as jest.MockedFunction<typeof fetch>;
     global.fetch = mockFetchError;
 
-    const { container } = render(
-      <PerformanceMonitorProvider>
-        <TestComponent />
-      </PerformanceMonitorProvider>
-    );
+    const { container } = renderWithProvider(<TestComponent />);
 
     await act(async () => {
       try {
@@ -118,11 +118,7 @@ describe('useNetworkMonitor', () => {
   }, 1000);
 
   it('should restore original fetch on unmount', () => {
-    const { unmount } = render(
-      <PerformanceMonitorProvider>
-        <TestComponent />
-      </PerformanceMonitorProvider>
-    );
+    const { unmount } = renderWithProvider(<TestComponent />);
 
     const currentFetch = global.fetch;
     unmount();

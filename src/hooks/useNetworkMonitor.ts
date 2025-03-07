@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { usePerformanceContext } from '../context/PerformanceContext';
+import { usePerformanceMonitorContext } from '../components/PerformanceMonitorContext';
 import type { NetworkRequest } from '../types';
 
 interface UseNetworkMonitorOptions {
@@ -7,7 +7,7 @@ interface UseNetworkMonitorOptions {
 }
 
 export const useNetworkMonitor = ({ componentName }: UseNetworkMonitorOptions) => {
-  const { updateMetrics } = usePerformanceContext();
+  const { updateNetworkMetrics } = usePerformanceMonitorContext();
   const originalFetch = useRef<typeof fetch>(global.fetch);
 
   useEffect(() => {
@@ -28,8 +28,8 @@ export const useNetworkMonitor = ({ componentName }: UseNetworkMonitorOptions) =
           timestamp: Date.now(),
         };
 
-        updateMetrics(componentName, {
-          networkRequests: (prev) => [...(prev || []), { requests: [networkRequest] }],
+        updateNetworkMetrics({
+          requests: [networkRequest]
         });
 
         return response;
@@ -44,8 +44,8 @@ export const useNetworkMonitor = ({ componentName }: UseNetworkMonitorOptions) =
           error: error instanceof Error ? error.message : 'Unknown error',
         };
 
-        updateMetrics(componentName, {
-          networkRequests: (prev) => [...(prev || []), { requests: [networkRequest] }],
+        updateNetworkMetrics({
+          requests: [networkRequest]
         });
 
         throw error;
@@ -57,7 +57,7 @@ export const useNetworkMonitor = ({ componentName }: UseNetworkMonitorOptions) =
     return () => {
       global.fetch = currentFetch;
     };
-  }, [componentName, updateMetrics]);
+  }, [componentName, updateNetworkMetrics]);
 
   return null;
 }; 

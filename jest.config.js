@@ -7,7 +7,9 @@ module.exports = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest',
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
+      tsconfig: 'tsconfig.json'
+    }],
   },
   testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
@@ -17,4 +19,11 @@ module.exports = {
     '!src/index.ts',
     '!src/setupTests.ts',
   ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/'
+  ],
+  roots: [
+    '<rootDir>/src'
+  ]
 }; 
