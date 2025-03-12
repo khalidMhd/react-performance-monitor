@@ -6,11 +6,13 @@ A lightweight, easy-to-use performance monitoring library for React applications
 
 - 📊 **Component Performance Metrics**: Track render counts, mount times, update times, and total render time
 - 🔍 **Unnecessary Render Detection**: Identify components that re-render when props haven't changed
-- 📈 **Performance Dashboard**: Visualize performance metrics with a built-in dashboard
+- 📈 **Real-time Performance Dashboard**: Visualize performance metrics with a built-in, real-time updating dashboard
 - 🚦 **Threshold Warnings**: Set thresholds for render counts and render times to get warnings
 - 🔄 **HOC & Hook API**: Use either Higher-Order Components or hooks based on your preference
 - 🧩 **Context Bridge**: Seamlessly connects monitoring and visualization contexts
 - 🛡️ **Error Handling**: Gracefully handles errors to prevent application crashes
+- 🔎 **Component Filtering**: Filter and search through monitored components in the dashboard
+- 🔄 **Metric Reset**: Reset performance metrics at any time with a single click
 
 ## Installation
 
@@ -88,6 +90,39 @@ const MyComponent = ({ name }) => {
 export default MyComponent;
 ```
 
+## Performance Dashboard
+
+The `PerformanceDashboard` component provides a comprehensive, real-time view of your application's performance metrics:
+
+### Key Metrics
+- **Components Tracked**: Total number of components being monitored
+- **Total Renders**: Cumulative count of render operations across all components
+- **Total Render Time**: Aggregate rendering time across all components
+- **Unnecessary Renders**: Number of renders that could have been avoided
+
+### Component-Level Metrics
+For each tracked component, the dashboard displays:
+- Component name
+- Render count
+- Mount time (ms)
+- Total render time (ms)
+- Unnecessary renders
+- Average update time (ms)
+
+### Features
+- **Real-time Updates**: Metrics update automatically as your components render
+- **Component Filtering**: Search and filter components by name
+- **Metric Reset**: Reset all metrics with a single click
+- **Sorting**: Components are automatically sorted by total render time
+- **Responsive Design**: Works well on all screen sizes
+
+```jsx
+import { PerformanceDashboard } from 'react-perf-mon';
+
+// Render the dashboard anywhere within the PerformanceMonitoringProvider
+<PerformanceDashboard />
+```
+
 ## Configuration Options
 
 The `PerformanceMonitoringProvider` accepts the following configuration options:
@@ -104,24 +139,6 @@ interface PerformanceMonitorConfig {
     maxUpdateTime?: number;       // Maximum acceptable update time (ms)
   };
 }
-```
-
-## Performance Dashboard
-
-The `PerformanceDashboard` component provides a visual representation of your application's performance metrics. It shows:
-
-- Total number of components being tracked
-- Total render count across all components
-- Total render time
-- Unnecessary render count
-- Detailed metrics for each component
-- Identification of the slowest component
-
-```jsx
-import { PerformanceDashboard } from 'react-perf-mon';
-
-// Render the dashboard anywhere within the PerformanceMonitoringProvider
-<PerformanceDashboard />
 ```
 
 ## Advanced Usage
