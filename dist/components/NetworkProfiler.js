@@ -5,7 +5,7 @@ var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cook
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
-import { usePerformanceContext } from '../context/PerformanceContext';
+import { usePerformanceMonitorContext } from './PerformanceMonitorContext';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, } from 'chart.js';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
@@ -39,17 +39,12 @@ var DurationBadge = styled.span(templateObject_5 || (templateObject_5 = __makeTe
     return '#22c55e';
 });
 export var NetworkProfiler = function () {
-    var metrics = usePerformanceContext().metrics;
+    var networkMetrics = usePerformanceMonitorContext().networkMetrics;
     var _a = useState([]), requests = _a[0], setRequests = _a[1];
     useEffect(function () {
-        // Collect all network requests from all components
-        var allRequests = Object.values(metrics.components)
-            .filter(function (component) { return component.networkRequests; })
-            .flatMap(function (component) { return component.networkRequests || []; })
-            .flatMap(function (networkMetrics) { return networkMetrics.requests; })
-            .sort(function (a, b) { return b.timestamp - a.timestamp; }); // Sort by most recent first
-        setRequests(allRequests);
-    }, [metrics]);
+        // Use the network requests directly from the context
+        setRequests(networkMetrics.requests || []);
+    }, [networkMetrics]);
     var chartData = {
         labels: requests.map(function (req) { return new Date(req.timestamp).toLocaleTimeString(); }),
         datasets: [

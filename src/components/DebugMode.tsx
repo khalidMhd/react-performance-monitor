@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import styled from '@emotion/styled';
-import { usePerformanceContext } from '../context/PerformanceContext';
+import { usePerformanceMonitorContext } from './PerformanceMonitorContext';
 
 const Container = styled.div`
   margin-top: 24px;
@@ -100,10 +100,25 @@ interface LogMessage {
 }
 
 export const DebugMode: React.FC = () => {
-  const { metrics, config, setConfig } = usePerformanceContext();
+  const { getConfig, getAllMetrics } = usePerformanceMonitorContext();
+  const config = getConfig();
+  
+  // Convert metrics from monitor context to the format needed for debug mode
+  const components = useMemo(() => {
+    const allMetrics = getAllMetrics();
+    return Object.entries(allMetrics).map(([name, metric]) => ({
+      name,
+      renderCount: metric.renderCount,
+      mountTime: metric.mountTime,
+      totalRenderTime: metric.totalRenderTime,
+      unnecessaryRenders: metric.unnecessaryRenders || 0
+    }));
+  }, [getAllMetrics]);
+  
   const [isRecording, setIsRecording] = useState(false);
   const [logs, setLogs] = useState<LogMessage[]>([]);
   const [selectedComponent, setSelectedComponent] = useState<string>('');
+  const [logFilter, setLogFilter] = useState<'all' | 'info' | 'warn' | 'error'>('all');
 
   const startRecording = () => {
     setIsRecording(true);
@@ -128,7 +143,7 @@ export const DebugMode: React.FC = () => {
     if (!isRecording) return;
 
     const interval = setInterval(() => {
-      const component = selectedComponent || Object.keys(metrics.components)[0];
+      const component = selectedComponent || Object.keys(components)[0];
       if (!component) return;
 
       const types: Array<'info' | 'warn' | 'error'> = ['info', 'warn', 'error'];
@@ -162,7 +177,7 @@ export const DebugMode: React.FC = () => {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [isRecording, selectedComponent, metrics.components]);
+  }, [isRecording, selectedComponent, components]);
 
   return (
     <Container>
@@ -175,24 +190,21 @@ export const DebugMode: React.FC = () => {
           onChange={(e) => setSelectedComponent(e.target.value)}
         >
           <option value="">All Components</option>
-          {Object.keys(metrics.components).map(name => (
-            <option key={name} value={name}>{name}</option>
+          {components.map(name => (
+            <option key={name.name} value={name.name}>{name.name}</option>
           ))}
         </Select>
 
-        <Label>Warning Thresholds</Label>
-        <Input
-          type="number"
-          placeholder="Render Warning Threshold (ms)"
-          value={config.renderWarningThreshold}
-          onChange={(e) => setConfig({ renderWarningThreshold: Number(e.target.value) })}
-        />
-        <Input
-          type="number"
-          placeholder="Mount Warning Threshold (ms)"
-          value={config.mountWarningThreshold}
-          onChange={(e) => setConfig({ mountWarningThreshold: Number(e.target.value) })}
-        />
+        <Label>Filter Logs</Label>
+        <Select
+          value={logFilter}
+          onChange={(e) => setLogFilter(e.target.value as any)}
+        >
+          <option value="all">All Logs</option>
+          <option value="info">Info</option>
+          <option value="warn">Warnings</option>
+          <option value="error">Errors</option>
+        </Select>
       </ControlGroup>
 
       <Button onClick={startRecording} disabled={isRecording}>
@@ -206,11 +218,14 @@ export const DebugMode: React.FC = () => {
       </Button>
 
       <LogContainer>
-        {logs.map(log => (
-          <LogEntry key={log.id} type={log.type}>
-            [{new Date(log.timestamp).toLocaleTimeString()}] {log.component}: {log.message}
-          </LogEntry>
-        ))}
+        {logs
+          .filter(log => !selectedComponent || log.component === selectedComponent)
+          .filter(log => logFilter === 'all' || log.type === logFilter)
+          .map(log => (
+            <LogEntry key={log.id} type={log.type}>
+              [{new Date(log.timestamp).toLocaleTimeString()}] {log.component}: {log.message}
+            </LogEntry>
+          ))}
         {logs.length === 0 && (
           <LogEntry type="info">
             No logs yet. Start recording to capture component activity.

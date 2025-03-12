@@ -3,9 +3,9 @@ var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cook
     return cooked;
 };
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import styled from '@emotion/styled';
-import { usePerformanceContext } from '../context/PerformanceContext';
+import { usePerformanceMonitorContext } from './PerformanceMonitorContext';
 var Container = styled.div(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n  margin-top: 24px;\n  padding: 16px;\n  background: #fff;\n  border-radius: 8px;\n  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n"], ["\n  margin-top: 24px;\n  padding: 16px;\n  background: #fff;\n  border-radius: 8px;\n  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n"])));
 var Title = styled.h3(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n  margin: 0 0 16px 0;\n  color: #1e293b;\n"], ["\n  margin: 0 0 16px 0;\n  color: #1e293b;\n"])));
 var DependencyTree = styled.div(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n  font-family: monospace;\n"], ["\n  font-family: monospace;\n"])));
@@ -60,11 +60,22 @@ var RenderNode = function (_a) {
     return (_jsxs(_Fragment, { children: [_jsxs(TreeNode, { depth: depth, children: [_jsx(NodeIcon, { isParent: hasChildren, children: hasChildren ? '▼' : '•' }), _jsxs(NodeContent, { children: [_jsx(ComponentName, { children: node.name }), _jsxs(RenderInfo, { children: ["(", node.renderCount, " renders, ", node.totalRenderTime.toFixed(2), "ms)"] }), node.unnecessaryRenders > 0 && (_jsxs(WarningBadge, { children: [node.unnecessaryRenders, " unnecessary"] }))] })] }), node.children.map(function (child) { return (_jsx(RenderNode, { node: child, depth: depth + 1 }, child.name)); })] }));
 };
 export var DependencyTracker = function () {
-    var metrics = usePerformanceContext().metrics;
-    var _a = useState([]), tree = _a[0], setTree = _a[1];
-    useEffect(function () {
-        setTree(buildDependencyTree(metrics.components));
-    }, [metrics]);
-    return (_jsxs(Container, { children: [_jsx(Title, { children: "Component Dependencies" }), _jsx(DependencyTree, { children: tree.map(function (node) { return (_jsx(RenderNode, { node: node, depth: 0 }, node.name)); }) })] }));
+    var getAllMetrics = usePerformanceMonitorContext().getAllMetrics;
+    // Convert metrics from monitor context to the format needed for dependency tracking
+    var components = useMemo(function () {
+        var allMetrics = getAllMetrics();
+        var result = {};
+        Object.entries(allMetrics).forEach(function (_a) {
+            var name = _a[0], metric = _a[1];
+            result[name] = {
+                renderCount: metric.renderCount,
+                unnecessaryRenders: metric.unnecessaryRenders || 0,
+                totalRenderTime: metric.totalRenderTime
+            };
+        });
+        return result;
+    }, [getAllMetrics]);
+    var dependencyTree = buildDependencyTree(components);
+    return (_jsxs(Container, { children: [_jsx(Title, { children: "Component Dependencies" }), _jsx(DependencyTree, { children: dependencyTree.map(function (node) { return (_jsx(RenderNode, { node: node, depth: 0 }, node.name)); }) })] }));
 };
 var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9;

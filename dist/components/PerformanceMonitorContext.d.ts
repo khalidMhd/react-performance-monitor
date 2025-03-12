@@ -8,6 +8,8 @@ interface PerformanceMonitorContextValue {
     memoryMetrics: MemoryMetrics;
     updateNetworkMetrics: (metrics: NetworkMetrics) => void;
     updateMemoryMetrics: (metrics: MemoryMetrics) => void;
+    getAllMetrics: () => Record<string, PerformanceMetric>;
+    resetAllMetrics: () => void;
 }
 export interface PerformanceMonitorProviderProps {
     children: React.ReactNode;

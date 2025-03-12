@@ -12,7 +12,8 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { usePerformanceContext } from '../context/PerformanceContext';
+import { useMemo } from 'react';
+import { usePerformanceMonitorContext } from './PerformanceMonitorContext';
 import { Line } from 'react-chartjs-2';
 import styled from '@emotion/styled';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, } from 'chart.js';
@@ -25,9 +26,27 @@ var Charts = styled.div(templateObject_4 || (templateObject_4 = __makeTemplateOb
 var ChartContainer = styled.div(templateObject_5 || (templateObject_5 = __makeTemplateObject(["\n  background: #f8fafc;\n  padding: 16px;\n  border-radius: 8px;\n"], ["\n  background: #f8fafc;\n  padding: 16px;\n  border-radius: 8px;\n"])));
 var ChartTitle = styled.h3(templateObject_6 || (templateObject_6 = __makeTemplateObject(["\n  margin: 0 0 16px 0;\n  color: #1e293b;\n"], ["\n  margin: 0 0 16px 0;\n  color: #1e293b;\n"])));
 export var PerformanceExport = function () {
-    var metrics = usePerformanceContext().metrics;
+    var getAllMetrics = usePerformanceMonitorContext().getAllMetrics;
+    // Convert metrics from monitor context to the format needed for charts
+    var components = useMemo(function () {
+        var allMetrics = getAllMetrics();
+        var result = {};
+        Object.entries(allMetrics).forEach(function (_a) {
+            var name = _a[0], metric = _a[1];
+            result[name] = {
+                componentName: name,
+                renderCount: metric.renderCount,
+                mountTime: metric.mountTime,
+                updateTimes: metric.updateTimes || [],
+                lastRenderTime: metric.lastRenderTime,
+                totalRenderTime: metric.totalRenderTime,
+                unnecessaryRenders: metric.unnecessaryRenders || 0
+            };
+        });
+        return result;
+    }, [getAllMetrics]);
     var exportToJSON = function () {
-        var dataStr = JSON.stringify(metrics, null, 2);
+        var dataStr = JSON.stringify(components, null, 2);
         var dataBlob = new Blob([dataStr], { type: 'application/json' });
         var url = URL.createObjectURL(dataBlob);
         var link = document.createElement('a');
@@ -39,9 +58,9 @@ export var PerformanceExport = function () {
         URL.revokeObjectURL(url);
     };
     var exportToCSV = function () {
-        var components = Object.values(metrics.components);
+        var componentsArray = Object.values(components);
         var headers = ['Component', 'Render Count', 'Mount Time', 'Total Render Time', 'Unnecessary Renders', 'Avg Update Time'];
-        var rows = components.map(function (comp) { return [
+        var rows = componentsArray.map(function (comp) { return [
             comp.componentName,
             comp.renderCount,
             comp.mountTime.toFixed(2),
@@ -66,17 +85,17 @@ export var PerformanceExport = function () {
     };
     // Prepare data for render time chart
     var renderTimeChartData = {
-        labels: Object.keys(metrics.components),
+        labels: Object.keys(components),
         datasets: [
             {
                 label: 'Total Render Time (ms)',
-                data: Object.values(metrics.components).map(function (comp) { return comp.totalRenderTime; }),
+                data: Object.values(components).map(function (comp) { return comp.totalRenderTime; }),
                 borderColor: 'rgb(75, 192, 192)',
                 tension: 0.1,
             },
             {
                 label: 'Mount Time (ms)',
-                data: Object.values(metrics.components).map(function (comp) { return comp.mountTime; }),
+                data: Object.values(components).map(function (comp) { return comp.mountTime; }),
                 borderColor: 'rgb(255, 99, 132)',
                 tension: 0.1,
             },
@@ -84,17 +103,17 @@ export var PerformanceExport = function () {
     };
     // Prepare data for render count chart
     var renderCountChartData = {
-        labels: Object.keys(metrics.components),
+        labels: Object.keys(components),
         datasets: [
             {
                 label: 'Render Count',
-                data: Object.values(metrics.components).map(function (comp) { return comp.renderCount; }),
+                data: Object.values(components).map(function (comp) { return comp.renderCount; }),
                 borderColor: 'rgb(53, 162, 235)',
                 tension: 0.1,
             },
             {
                 label: 'Unnecessary Renders',
-                data: Object.values(metrics.components).map(function (comp) { return comp.unnecessaryRenders; }),
+                data: Object.values(components).map(function (comp) { return comp.unnecessaryRenders; }),
                 borderColor: 'rgb(255, 159, 64)',
                 tension: 0.1,
             },

@@ -1,305 +1,333 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { usePerformanceMonitorContext, PerformanceDashboard } from './lib/PerformanceMonitor';
+import React, { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import './App.css';
-import { PerformanceMonitorProvider } from './lib/PerformanceMonitor';
 
-// Test component with all monitoring features
-const TestComponent: React.FC = () => {
-  const [count, setCount] = useState(0);
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const { recordMetric, recordNetworkMetric } = usePerformanceMonitorContext();
-  const renderStartTime = useRef(performance.now());
-  const mountTime = useRef<number | null>(null);
+// Import the performance monitoring components
+import { 
+  PerformanceMonitoringProvider, 
+  PerformanceDashboard,
+  withPerformanceTracking
+} from 'react-perf-mon';
 
-  useEffect(() => {
-    const mountEndTime = performance.now();
-    mountTime.current = mountEndTime - renderStartTime.current;
-    console.log(`[TestComponent] Mount time: ${mountTime.current.toFixed(2)}ms`);
-  }, []);
+interface DataItem {
+  id: number;
+  title: string;
+}
 
-  const incrementCount = () => {
-    const startTime = performance.now();
-    setCount(prev => prev + 1);
-    const endTime = performance.now();
-    const renderTime = endTime - startTime;
+// Simulated data fetching
+const fetchData = (): Promise<DataItem[]> => new Promise(resolve => 
+  setTimeout(() => resolve([
+    { id: 1, title: 'Item 1' },
+    { id: 2, title: 'Item 2' },
+    { id: 3, title: 'Item 3' },
+  ]), 1500)
+);
 
-    recordMetric({
-      componentName: 'TestComponent',
-      renderCount: count + 1,
-      mountTime: mountTime.current || 0,
-      updateTimes: [renderTime],
-      lastRenderTime: renderTime,
-      totalRenderTime: renderTime,
-      unnecessaryRenders: 0,
-      timestamp: Date.now(),
-      lifecycle: {
-        mountTime: mountTime.current || 0,
-        updateTimes: [renderTime],
-        unmountTime: undefined,
-        parentComponent: undefined,
-        childComponents: [],
-        renderCount: count + 1,
-        lastRenderTime: renderTime
-      }
-    });
-
-    console.log(`[TestComponent] Render time: ${renderTime.toFixed(2)}ms`);
-  };
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    const startTime = performance.now();
-    try {
-      const response = await fetch('https://jsonplaceholder.typicode.com/posts/1');
-      const data = await response.json();
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-
-      recordNetworkMetric({
-        url: 'https://jsonplaceholder.typicode.com/posts/1',
-        method: 'GET',
-        duration,
-        status: response.status,
-        timestamp: Date.now()
-      });
-
-      console.log(`[TestComponent] Network request duration: ${duration.toFixed(2)}ms`);
-      setData(data);
-    } catch (error) {
-      console.error('[TestComponent] Network request failed:', error);
-      recordNetworkMetric({
-        url: 'https://jsonplaceholder.typicode.com/posts/1',
-        method: 'GET',
-        duration: performance.now() - startTime,
-        status: 500,
-        timestamp: Date.now()
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+// Lazy loaded component content
+const LazyComponentContent = () => {
   return (
-    <div className="component-card">
-      <h2>Test Component</h2>
-      <div className="button-group">
-        <button className="button button-primary" onClick={incrementCount}>
-          Increment Count
-        </button>
-        <button 
-          className="button button-success" 
-          onClick={fetchData}
-          disabled={isLoading}
-        >
-          {isLoading ? 'Loading...' : 'Fetch Data'}
-        </button>
-      </div>
-      <div className="data-display">
-        <p>Count: {count}</p>
-        {data && (
-          <pre>{JSON.stringify(data, null, 2)}</pre>
-        )}
-      </div>
-      <div className="component-stats">
-        <p>Mount Time: {mountTime.current?.toFixed(2)}ms</p>
-        <p>Render Count: {count}</p>
-      </div>
+    <div className="lazy-component">
+      <h2>Lazy Loaded Component</h2>
+      <p>This component was loaded lazily after a delay.</p>
     </div>
   );
 };
 
-// Heavy component to test memory usage
-const HeavyComponent: React.FC = () => {
+// Wrap with performance tracking
+const TrackedLazyComponentContent = withPerformanceTracking(LazyComponentContent, 'LazyComponent');
+
+// Lazy loaded component
+const LazyComponent = React.lazy(() =>
+  new Promise<{ default: React.ComponentType }>(resolve =>
+    setTimeout(() =>
+      // Simulating a lazy-loaded component
+      resolve({
+        default: TrackedLazyComponentContent
+      }),
+      2000
+    )
+  )
+);
+
+// Component with intentional performance issues
+const SlowComponentBase = ({ count, delay = 50 }: { count: number; delay?: number }) => {
+  // Simulate slow rendering
+  const startTime = performance.now();
+  while (performance.now() - startTime < delay) {
+    // Artificial delay
+  }
+
+  return (
+    <div className="slow-component">
+      <h2>Slow Component ({delay}ms delay)</h2>
+      <p>Count: {count}</p>
+    </div>
+  );
+};
+
+// Wrap with performance tracking
+const SlowComponent = withPerformanceTracking(SlowComponentBase, 'SlowComponent');
+
+// Component with unnecessary re-renders
+const UnnecessaryRendersBase = ({ updateCount }: { updateCount: number }) => {
+  const [localState, setLocalState] = useState(0);
+
+  // This will cause unnecessary re-renders
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLocalState(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // This creates a new object on every render, causing child components to re-render
+  const data = { count: localState };
+
+  return (
+    <div className="unnecessary-renders">
+      <h2>Component with Unnecessary Renders</h2>
+      <p>Local State: {localState}</p>
+      <p>Parent Update Count: {updateCount}</p>
+      <ChildComponent data={data} />
+    </div>
+  );
+};
+
+// Wrap with performance tracking
+const UnnecessaryRenders = withPerformanceTracking(UnnecessaryRendersBase, 'UnnecessaryRenders');
+
+// Child component that re-renders unnecessarily
+const ChildComponentBase = ({ data }: { data: { count: number } }) => {
+  console.log('ChildComponent rendered');
+  return (
+    <div className="child-component">
+      <p>Child component (should use React.memo with proper deps)</p>
+      <p>Count from parent: {data.count}</p>
+    </div>
+  );
+};
+
+// Wrap with performance tracking
+const ChildComponent = withPerformanceTracking(React.memo(ChildComponentBase), 'ChildComponent');
+
+// Network request component
+const DataFetcherBase = () => {
+  const [data, setData] = useState<DataItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchCount, setFetchCount] = useState(0);
+
+  const fetchMore = async () => {
+    setLoading(true);
+    const newData = await fetchData();
+    setData(prev => [...prev, ...newData]);
+    setLoading(false);
+    setFetchCount(prev => prev + 1);
+  };
+
+  // Simulate multiple network requests
+  const fetchMultiple = async () => {
+    setLoading(true);
+    for (let i = 0; i < 3; i++) {
+      const newData = await fetchData();
+      setData(prev => [...prev, ...newData]);
+    }
+    setLoading(false);
+    setFetchCount(prev => prev + 3);
+  };
+
+  return (
+    <div className="data-fetcher">
+      <h2>Network Request Component</h2>
+      <div className="button-group">
+        <button onClick={fetchMore} disabled={loading}>
+          {loading ? 'Loading...' : 'Fetch Data'}
+        </button>
+        <button onClick={fetchMultiple} disabled={loading}>
+          Fetch Multiple
+        </button>
+      </div>
+      <p>Total fetches: {fetchCount}</p>
+      <ul>
+        {data.map((item, index) => (
+          <li key={`${item.id}-${index}`}>{item.title}</li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
+// Wrap with performance tracking
+const DataFetcher = withPerformanceTracking(DataFetcherBase, 'DataFetcher');
+
+// Memory intensive component
+const MemoryComponentBase = () => {
   const [items, setItems] = useState<number[]>([]);
-  const [isAdding, setIsAdding] = useState(false);
-  const { recordMetric } = usePerformanceMonitorContext();
-  const renderStartTime = useRef(performance.now());
-  const mountTime = useRef<number | null>(null);
+  const [leakedArrays, setLeakedArrays] = useState<number>(0);
+  
+  // This array is intentionally stored in a closure to simulate a memory leak
+  const leakedReferences: any[] = [];
 
-  useEffect(() => {
-    const mountEndTime = performance.now();
-    mountTime.current = mountEndTime - renderStartTime.current;
-    console.log(`[HeavyComponent] Mount time: ${mountTime.current.toFixed(2)}ms`);
-  }, []);
+  const addManyItems = () => {
+    // Add a large number of items to potentially stress memory
+    setItems(prev => [...prev, ...Array(1000).fill(0).map((_, i) => prev.length + i)]);
+  };
 
-  const addItems = () => {
-    setIsAdding(true);
-    const startTime = performance.now();
-    
-    // Simulate heavy computation
-    const newItems = Array.from({ length: 10000 }, (_, i) => i);
-    
-    // Record memory usage if available
-    const memoryUsage = performance.memory ? {
-      jsHeapSizeLimit: performance.memory.jsHeapSizeLimit / (1024 * 1024),
-      totalJSHeapSize: performance.memory.totalJSHeapSize / (1024 * 1024),
-      usedJSHeapSize: performance.memory.usedJSHeapSize / (1024 * 1024)
-    } : undefined;
+  const simulateMemoryLeak = () => {
+    // Create a large array and store it in our leaked references
+    const largeArray = new Array(10000).fill(0).map((_, i) => ({ id: i, data: `Item ${i}` }));
+    leakedReferences.push(largeArray);
+    setLeakedArrays(leakedReferences.length);
+  };
 
-    setItems(prev => [...prev, ...newItems]);
-    
-    const endTime = performance.now();
-    const renderTime = endTime - startTime;
-
-    recordMetric({
-      componentName: 'HeavyComponent',
-      renderCount: items.length + 10000,
-      mountTime: mountTime.current || 0,
-      updateTimes: [renderTime],
-      lastRenderTime: renderTime,
-      totalRenderTime: renderTime,
-      unnecessaryRenders: 0,
-      timestamp: Date.now(),
-      memoryUsage,
-      lifecycle: {
-        mountTime: mountTime.current || 0,
-        updateTimes: [renderTime],
-        unmountTime: undefined,
-        parentComponent: undefined,
-        childComponents: [],
-        renderCount: items.length + 10000,
-        lastRenderTime: renderTime
-      }
-    });
-
-    console.log(`[HeavyComponent] Added 10,000 items. Render time: ${renderTime.toFixed(2)}ms`);
-    if (memoryUsage) {
-      console.log(`[HeavyComponent] Memory usage: ${memoryUsage.usedJSHeapSize.toFixed(2)}MB`);
-    }
-    
-    setIsAdding(false);
+  const clearItems = () => {
+    setItems([]);
   };
 
   return (
-    <div className="component-card">
-      <h2>Heavy Component</h2>
+    <div className="memory-component">
+      <h2>Memory Intensive Component</h2>
       <div className="button-group">
-        <button 
-          className="button button-warning" 
-          onClick={addItems}
-          disabled={isAdding}
-        >
-          {isAdding ? 'Adding Items...' : 'Add 10,000 Items'}
-        </button>
+        <button onClick={addManyItems}>Add 1000 Items</button>
+        <button onClick={simulateMemoryLeak}>Simulate Memory Leak</button>
+        <button onClick={clearItems}>Clear Items</button>
       </div>
-      <div className="data-display">
-        <p>Total Items: {items.length.toLocaleString()}</p>
-        <p>Batches: {Math.ceil(items.length / 10000)}</p>
-      </div>
-      <div className="component-stats">
-        <p>Mount Time: {mountTime.current?.toFixed(2)}ms</p>
-        <p>Last Render Time: {performance.now() - renderStartTime.current}ms</p>
-        {performance.memory && (
-          <p>Memory Usage: {(performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(2)}MB</p>
-        )}
+      <p>Total items: {items.length}</p>
+      <p>Leaked arrays: {leakedArrays}</p>
+      <div className="items-container">
+        {items.slice(0, 10).map(item => (
+          <span key={item} className="item-box">{item}</span>
+        ))}
+        {items.length > 10 && <span>...and {items.length - 10} more</span>}
       </div>
     </div>
   );
 };
 
-// Component to test unnecessary renders
-const UnnecessaryRenderComponent: React.FC = () => {
-  const [count, setCount] = useState(0);
-  const [unusedState, setUnusedState] = useState(0);
-  const { recordMetric } = usePerformanceMonitorContext();
-  const renderStartTime = useRef(performance.now());
-  const mountTime = useRef<number | null>(null);
-  const prevCount = useRef(count);
-  const unnecessaryRenders = useRef(0);
+// Wrap with performance tracking
+const MemoryComponent = withPerformanceTracking(MemoryComponentBase, 'MemoryComponent');
 
-  useEffect(() => {
-    const mountEndTime = performance.now();
-    mountTime.current = mountEndTime - renderStartTime.current;
-    console.log(`[UnnecessaryRenderComponent] Mount time: ${mountTime.current.toFixed(2)}ms`);
-  }, []);
-
-  useEffect(() => {
-    // Check for unnecessary renders
-    if (prevCount.current === count) {
-      unnecessaryRenders.current += 1;
+// Component that demonstrates proper and improper use of hooks
+const HooksDemoBase = ({ count }: { count: number }) => {
+  // Proper use of useMemo
+  const expensiveValue = useMemo(() => {
+    console.log('Computing expensive value');
+    let result = 0;
+    for (let i = 0; i < 1000000; i++) {
+      result += (i * count) % 2;
     }
-    prevCount.current = count;
+    return result;
+  }, [count]);
 
-    const renderTime = performance.now() - renderStartTime.current;
-    recordMetric({
-      componentName: 'UnnecessaryRenderComponent',
-      renderCount: count,
-      mountTime: mountTime.current || 0,
-      updateTimes: [renderTime],
-      lastRenderTime: renderTime,
-      totalRenderTime: renderTime,
-      unnecessaryRenders: unnecessaryRenders.current,
-      timestamp: Date.now(),
-      lifecycle: {
-        mountTime: mountTime.current || 0,
-        updateTimes: [renderTime],
-        unmountTime: undefined,
-        parentComponent: undefined,
-        childComponents: [],
-        renderCount: count,
-        lastRenderTime: renderTime
-      }
-    });
+  // Proper use of useCallback
+  const memoizedCallback = useCallback(() => {
+    console.log('Memoized callback called');
+    return count * 2;
+  }, [count]);
 
-    console.log(`[UnnecessaryRenderComponent] Render time: ${renderTime.toFixed(2)}ms, Unnecessary renders: ${unnecessaryRenders.current}`);
-  }, [count, recordMetric]);
-
-  const updateCount = () => {
-    const startTime = performance.now();
-    setCount(prev => prev + 1);
-    renderStartTime.current = startTime;
-  };
-
-  const updateUnusedState = () => {
-    const startTime = performance.now();
-    setUnusedState(prev => prev + 1);
-    renderStartTime.current = startTime;
-  };
+  // Improper use of useCallback (dependencies missing)
+  const [localState, setLocalState] = useState(0);
+  const badCallback = useCallback(() => {
+    console.log('Bad callback called');
+    return count * localState; // localState should be in deps array
+  }, [count, localState]); // Fixed: Added localState to deps
 
   return (
-    <div className="component-card">
-      <h2>Unnecessary Render Test</h2>
-      <div className="button-group">
-        <button className="button button-primary" onClick={updateCount}>
-          Update Count: {count}
-        </button>
-        <button className="button button-warning" onClick={updateUnusedState}>
-          Update Unused State: {unusedState}
-        </button>
-      </div>
-      <div className="data-display">
-        <p>Count: {count}</p>
-        <p>Unused State: {unusedState}</p>
-      </div>
-      <div className="component-stats">
-        <p>Mount Time: {mountTime.current?.toFixed(2)}ms</p>
-        <p>Unnecessary Renders: {unnecessaryRenders.current}</p>
-        <p>Last Render Time: {performance.now() - renderStartTime.current}ms</p>
-      </div>
+    <div className="hooks-demo">
+      <h2>Hooks Usage Demo</h2>
+      <p>Count: {count}</p>
+      <p>Expensive calculation result: {expensiveValue}</p>
+      <p>Local state: {localState}</p>
+      <button onClick={() => setLocalState(prev => prev + 1)}>
+        Increment Local State
+      </button>
+      <p>Memoized callback result: {memoizedCallback()}</p>
+      <p>Bad callback result: {badCallback()}</p>
     </div>
   );
 };
+
+// Wrap with performance tracking
+const HooksDemo = withPerformanceTracking(HooksDemoBase, 'HooksDemo');
 
 function App() {
+  const [count, setCount] = useState(0);
+  const [showLazy, setShowLazy] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [slowComponentDelay, setSlowComponentDelay] = useState(50);
+
+  // This will cause unnecessary re-renders at the app level
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCount(c => c);  // Setting to same value causes re-render
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const increaseDelay = () => {
+    setSlowComponentDelay(prev => Math.min(prev + 50, 500));
+  };
+
+  const decreaseDelay = () => {
+    setSlowComponentDelay(prev => Math.max(prev - 50, 0));
+  };
+
   return (
-    <PerformanceMonitorProvider>
+    <PerformanceMonitoringProvider
+      config={{
+        enabled: true,
+        logToConsole: true,
+        includeWarnings: true,
+        thresholds: {
+          maxRenderCount: 10,
+          maxMountTime: 50, // ms
+          maxUpdateTime: 25 // ms
+        },
+        excludeComponents: []
+      }}
+      enableTracking={true}
+    >
       <div className="App">
         <header className="App-header">
-          <div className="dashboard-header">
-            <h1>React Performance Monitor Example</h1>
-          </div>
-          
-          <div className="test-components">
-            <TestComponent />
-            <HeavyComponent />
-            <UnnecessaryRenderComponent />
-          </div>
-
-          <PerformanceDashboard />
+          <h1>React Performance Monitor Demo</h1>
+          <p>
+            This app demonstrates various performance scenarios that can be monitored.
+          </p>
         </header>
+
+        <div className="controls">
+          <button onClick={() => setCount(c => c + 1)}>
+            Increment Counter ({count})
+          </button>
+          <button onClick={() => setShowLazy(!showLazy)}>
+            {showLazy ? 'Hide' : 'Show'} Lazy Component
+          </button>
+          <button onClick={() => setShowDashboard(!showDashboard)}>
+            {showDashboard ? 'Hide' : 'Show'} Performance Dashboard
+          </button>
+          <div className="delay-controls">
+            <button onClick={decreaseDelay}>Decrease Delay</button>
+            <span>Slow Component Delay: {slowComponentDelay}ms</span>
+            <button onClick={increaseDelay}>Increase Delay</button>
+          </div>
+        </div>
+
+        <div className="components-grid">
+          <SlowComponent count={count} delay={slowComponentDelay} />
+          <UnnecessaryRenders updateCount={count} />
+          <DataFetcher />
+          <MemoryComponent />
+          <HooksDemo count={count} />
+          
+          {showLazy && (
+            <Suspense fallback={<div className="loading">Loading lazy component...</div>}>
+              <LazyComponent />
+            </Suspense>
+          )}
+        </div>
+
+        {showDashboard && <PerformanceDashboard />}
       </div>
-    </PerformanceMonitorProvider>
+    </PerformanceMonitoringProvider>
   );
 }
 

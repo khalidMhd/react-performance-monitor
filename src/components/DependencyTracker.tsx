@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import styled from '@emotion/styled';
-import { usePerformanceContext } from '../context/PerformanceContext';
+import { usePerformanceMonitorContext } from './PerformanceMonitorContext';
+import type { ComponentMetrics as ComponentMetricsType } from '../types';
 
 const Container = styled.div`
   margin-top: 24px;
@@ -134,18 +135,31 @@ const RenderNode: React.FC<{ node: DependencyNode; depth: number }> = ({ node, d
 };
 
 export const DependencyTracker: React.FC = () => {
-  const { metrics } = usePerformanceContext();
-  const [tree, setTree] = useState<DependencyNode[]>([]);
-
-  useEffect(() => {
-    setTree(buildDependencyTree(metrics.components));
-  }, [metrics]);
+  const { getAllMetrics } = usePerformanceMonitorContext();
+  
+  // Convert metrics from monitor context to the format needed for dependency tracking
+  const components = useMemo<Record<string, ComponentMetrics>>(() => {
+    const allMetrics = getAllMetrics();
+    const result: Record<string, ComponentMetrics> = {};
+    
+    Object.entries(allMetrics).forEach(([name, metric]) => {
+      result[name] = {
+        renderCount: metric.renderCount,
+        unnecessaryRenders: metric.unnecessaryRenders || 0,
+        totalRenderTime: metric.totalRenderTime
+      };
+    });
+    
+    return result;
+  }, [getAllMetrics]);
+  
+  const dependencyTree = buildDependencyTree(components);
 
   return (
     <Container>
       <Title>Component Dependencies</Title>
       <DependencyTree>
-        {tree.map(node => (
+        {dependencyTree.map(node => (
           <RenderNode key={node.name} node={node} depth={0} />
         ))}
       </DependencyTree>

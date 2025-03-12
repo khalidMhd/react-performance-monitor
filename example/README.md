@@ -1,46 +1,70 @@
-# Getting Started with Create React App
+# React Performance Monitor Example
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project demonstrates the features of the React Performance Monitor library. It includes various components with intentional performance issues to showcase how the library can help identify and fix performance problems.
 
-## Available Scripts
+> **Note:** There may be some discrepancies between the README documentation of the library and the actual implementation. The example code has been adjusted to work with the current implementation.
 
-In the project directory, you can run:
+> **Important:** This library requires React 18.x. If you're using React 19 or another version, you may encounter hook-related errors. See the `FIX_REACT_VERSION.md` file for detailed instructions on resolving React version issues.
 
-### `npm start`
+> **Context Issue:** There's an issue with the dashboard component using a different context than the monitoring provider. See the `CONTEXT_ISSUE.md` file for details on how we've worked around this issue.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Components Included
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+1. **SlowComponent**: Artificially delays rendering by 50ms to simulate a slow component.
+2. **UnnecessaryRenders**: Demonstrates a component that re-renders unnecessarily due to internal state changes.
+3. **DataFetcher**: Shows network request monitoring with simulated API calls.
+4. **MemoryComponent**: Creates a large number of items to demonstrate memory usage tracking.
+5. **LazyComponent**: Demonstrates lazy loading and code splitting monitoring.
 
-### `npm test`
+## Testing Features One by One
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+We'll implement and test the React Performance Monitor features one by one:
 
-### `npm run build`
+### Basic Setup (Current State)
+- The app is set up with example components but without performance monitoring.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Step 1: Basic Performance Monitoring
+- Implement basic component render time tracking
+- Monitor unnecessary renders
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Step 2: Network Request Monitoring
+- Track API call performance
+- Monitor request durations and status codes
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Step 3: Memory Usage Tracking
+- Monitor heap size
+- Track memory usage over time
 
-### `npm run eject`
+### Step 4: Core Web Vitals
+- Track FCP, LCP, CLS, and FID
+- Monitor performance metrics
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+### Step 5: Performance Dashboard
+- Visualize all metrics in a dashboard
+- Analyze performance data
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Getting Started
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+1. Install dependencies:
+   ```
+   npm install
+   ```
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+2. Start the development server:
+   ```
+   npm start
+   ```
 
-## Learn More
+3. Open [http://localhost:3000](http://localhost:3000) to view the app in your browser.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Implementation Notes
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Each feature will be implemented by uncommenting and configuring the relevant parts of the code. The comments in the code indicate where changes will be made for each feature.
+
+## Performance Testing
+
+To test performance issues:
+- Click the "Increment Counter" button multiple times to trigger re-renders
+- Toggle the Lazy Component to test lazy loading
+- Click "Fetch Data" to test network performance
+- Click "Add 1000 Items" to test memory usage

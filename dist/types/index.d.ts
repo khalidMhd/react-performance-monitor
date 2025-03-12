@@ -23,6 +23,7 @@ export interface PerformanceWarning {
 export interface PerformanceSubscriber {
     onMetricUpdate: (metric: PerformanceMetric) => void;
     onWarning?: (warning: PerformanceWarning) => void;
+    onReset?: () => void;
 }
 export interface PerformanceMonitorConfig {
     enabled?: boolean;

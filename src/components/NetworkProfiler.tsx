@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
-import { usePerformanceContext } from '../context/PerformanceContext';
+import { usePerformanceMonitorContext } from './PerformanceMonitorContext';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -73,19 +73,13 @@ const DurationBadge = styled.span<{ duration: number }>`
 `;
 
 export const NetworkProfiler: React.FC = () => {
-  const { metrics } = usePerformanceContext();
+  const { networkMetrics } = usePerformanceMonitorContext();
   const [requests, setRequests] = useState<NetworkRequest[]>([]);
 
   useEffect(() => {
-    // Collect all network requests from all components
-    const allRequests = Object.values(metrics.components)
-      .filter(component => component.networkRequests)
-      .flatMap(component => component.networkRequests || [])
-      .flatMap(networkMetrics => networkMetrics.requests)
-      .sort((a, b) => b.timestamp - a.timestamp); // Sort by most recent first
-
-    setRequests(allRequests);
-  }, [metrics]);
+    // Use the network requests directly from the context
+    setRequests(networkMetrics.requests || []);
+  }, [networkMetrics]);
 
   const chartData = {
     labels: requests.map(req => new Date(req.timestamp).toLocaleTimeString()),

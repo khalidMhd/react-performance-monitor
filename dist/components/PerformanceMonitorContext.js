@@ -27,6 +27,8 @@ export var PerformanceMonitorProvider = function (_a) {
     var configRef = useRef(__assign({ enabled: true, logToConsole: true, includeWarnings: true }, config));
     var _c = useState(initialNetworkMetrics), networkMetrics = _c[0], setNetworkMetrics = _c[1];
     var _d = useState(initialMemoryMetrics), memoryMetrics = _d[0], setMemoryMetrics = _d[1];
+    // Store metrics in a ref to avoid re-renders
+    var metricsRef = useRef({});
     var emitWarning = useCallback(function (warning) {
         subscribersRef.current.forEach(function (subscriber) {
             var _a;
@@ -41,6 +43,8 @@ export var PerformanceMonitorProvider = function (_a) {
         if ((_a = configRef.current.excludeComponents) === null || _a === void 0 ? void 0 : _a.includes(metric.componentName)) {
             return;
         }
+        // Store the metric
+        metricsRef.current[metric.componentName] = metric;
         // Notify subscribers
         subscribersRef.current.forEach(function (subscriber) {
             subscriber.onMetricUpdate(metric);
@@ -79,6 +83,17 @@ export var PerformanceMonitorProvider = function (_a) {
         };
     }, []);
     var getConfig = useCallback(function () { return configRef.current; }, []);
+    var getAllMetrics = useCallback(function () {
+        return __assign({}, metricsRef.current);
+    }, []);
+    var resetAllMetrics = useCallback(function () {
+        metricsRef.current = {};
+        // Notify subscribers about reset
+        subscribersRef.current.forEach(function (subscriber) {
+            var _a;
+            (_a = subscriber.onReset) === null || _a === void 0 ? void 0 : _a.call(subscriber);
+        });
+    }, []);
     var updateNetworkMetrics = useCallback(function (metrics) {
         setNetworkMetrics(metrics);
     }, []);
@@ -92,7 +107,9 @@ export var PerformanceMonitorProvider = function (_a) {
         networkMetrics: networkMetrics,
         memoryMetrics: memoryMetrics,
         updateNetworkMetrics: updateNetworkMetrics,
-        updateMemoryMetrics: updateMemoryMetrics
+        updateMemoryMetrics: updateMemoryMetrics,
+        getAllMetrics: getAllMetrics,
+        resetAllMetrics: resetAllMetrics
     };
     return (_jsx(PerformanceMonitorContext.Provider, { value: contextValue, children: children }));
 };

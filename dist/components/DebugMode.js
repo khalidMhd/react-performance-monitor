@@ -12,9 +12,9 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import styled from '@emotion/styled';
-import { usePerformanceContext } from '../context/PerformanceContext';
+import { usePerformanceMonitorContext } from './PerformanceMonitorContext';
 var Container = styled.div(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n  margin-top: 24px;\n  padding: 16px;\n  background: #fff;\n  border-radius: 8px;\n  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n"], ["\n  margin-top: 24px;\n  padding: 16px;\n  background: #fff;\n  border-radius: 8px;\n  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);\n"])));
 var Title = styled.h3(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n  margin: 0 0 16px 0;\n  color: #1e293b;\n"], ["\n  margin: 0 0 16px 0;\n  color: #1e293b;\n"])));
 var ControlGroup = styled.div(templateObject_3 || (templateObject_3 = __makeTemplateObject(["\n  margin-bottom: 16px;\n"], ["\n  margin-bottom: 16px;\n"])));
@@ -37,10 +37,26 @@ var LogEntry = styled.div(templateObject_8 || (templateObject_8 = __makeTemplate
 });
 var Button = styled.button(templateObject_9 || (templateObject_9 = __makeTemplateObject(["\n  padding: 8px 16px;\n  background: #2563eb;\n  color: white;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  margin-right: 8px;\n  margin-bottom: 16px;\n\n  &:hover {\n    background: #1d4ed8;\n  }\n\n  &:disabled {\n    background: #94a3b8;\n    cursor: not-allowed;\n  }\n"], ["\n  padding: 8px 16px;\n  background: #2563eb;\n  color: white;\n  border: none;\n  border-radius: 4px;\n  cursor: pointer;\n  margin-right: 8px;\n  margin-bottom: 16px;\n\n  &:hover {\n    background: #1d4ed8;\n  }\n\n  &:disabled {\n    background: #94a3b8;\n    cursor: not-allowed;\n  }\n"])));
 export var DebugMode = function () {
-    var _a = usePerformanceContext(), metrics = _a.metrics, config = _a.config, setConfig = _a.setConfig;
+    var _a = usePerformanceMonitorContext(), getConfig = _a.getConfig, getAllMetrics = _a.getAllMetrics;
+    var config = getConfig();
+    // Convert metrics from monitor context to the format needed for debug mode
+    var components = useMemo(function () {
+        var allMetrics = getAllMetrics();
+        return Object.entries(allMetrics).map(function (_a) {
+            var name = _a[0], metric = _a[1];
+            return ({
+                name: name,
+                renderCount: metric.renderCount,
+                mountTime: metric.mountTime,
+                totalRenderTime: metric.totalRenderTime,
+                unnecessaryRenders: metric.unnecessaryRenders || 0
+            });
+        });
+    }, [getAllMetrics]);
     var _b = useState(false), isRecording = _b[0], setIsRecording = _b[1];
     var _c = useState([]), logs = _c[0], setLogs = _c[1];
     var _d = useState(''), selectedComponent = _d[0], setSelectedComponent = _d[1];
+    var _e = useState('all'), logFilter = _e[0], setLogFilter = _e[1];
     var startRecording = function () {
         setIsRecording(true);
         setLogs([]);
@@ -61,7 +77,7 @@ export var DebugMode = function () {
         if (!isRecording)
             return;
         var interval = setInterval(function () {
-            var component = selectedComponent || Object.keys(metrics.components)[0];
+            var component = selectedComponent || Object.keys(components)[0];
             if (!component)
                 return;
             var types = ['info', 'warn', 'error'];
@@ -93,7 +109,10 @@ export var DebugMode = function () {
                 }], false); });
         }, 2000);
         return function () { return clearInterval(interval); };
-    }, [isRecording, selectedComponent, metrics.components]);
-    return (_jsxs(Container, { children: [_jsx(Title, { children: "Debug Mode" }), _jsxs(ControlGroup, { children: [_jsx(Label, { children: "Select Component to Debug" }), _jsxs(Select, { value: selectedComponent, onChange: function (e) { return setSelectedComponent(e.target.value); }, children: [_jsx("option", { value: "", children: "All Components" }), Object.keys(metrics.components).map(function (name) { return (_jsx("option", { value: name, children: name }, name)); })] }), _jsx(Label, { children: "Warning Thresholds" }), _jsx(Input, { type: "number", placeholder: "Render Warning Threshold (ms)", value: config.renderWarningThreshold, onChange: function (e) { return setConfig({ renderWarningThreshold: Number(e.target.value) }); } }), _jsx(Input, { type: "number", placeholder: "Mount Warning Threshold (ms)", value: config.mountWarningThreshold, onChange: function (e) { return setConfig({ mountWarningThreshold: Number(e.target.value) }); } })] }), _jsx(Button, { onClick: startRecording, disabled: isRecording, children: "Start Recording" }), _jsx(Button, { onClick: stopRecording, disabled: !isRecording, children: "Stop Recording" }), _jsx(Button, { onClick: clearLogs, children: "Clear Logs" }), _jsxs(LogContainer, { children: [logs.map(function (log) { return (_jsxs(LogEntry, { type: log.type, children: ["[", new Date(log.timestamp).toLocaleTimeString(), "] ", log.component, ": ", log.message] }, log.id)); }), logs.length === 0 && (_jsx(LogEntry, { type: "info", children: "No logs yet. Start recording to capture component activity." }))] })] }));
+    }, [isRecording, selectedComponent, components]);
+    return (_jsxs(Container, { children: [_jsx(Title, { children: "Debug Mode" }), _jsxs(ControlGroup, { children: [_jsx(Label, { children: "Select Component to Debug" }), _jsxs(Select, { value: selectedComponent, onChange: function (e) { return setSelectedComponent(e.target.value); }, children: [_jsx("option", { value: "", children: "All Components" }), components.map(function (name) { return (_jsx("option", { value: name.name, children: name.name }, name.name)); })] }), _jsx(Label, { children: "Filter Logs" }), _jsxs(Select, { value: logFilter, onChange: function (e) { return setLogFilter(e.target.value); }, children: [_jsx("option", { value: "all", children: "All Logs" }), _jsx("option", { value: "info", children: "Info" }), _jsx("option", { value: "warn", children: "Warnings" }), _jsx("option", { value: "error", children: "Errors" })] })] }), _jsx(Button, { onClick: startRecording, disabled: isRecording, children: "Start Recording" }), _jsx(Button, { onClick: stopRecording, disabled: !isRecording, children: "Stop Recording" }), _jsx(Button, { onClick: clearLogs, children: "Clear Logs" }), _jsxs(LogContainer, { children: [logs
+                        .filter(function (log) { return !selectedComponent || log.component === selectedComponent; })
+                        .filter(function (log) { return logFilter === 'all' || log.type === logFilter; })
+                        .map(function (log) { return (_jsxs(LogEntry, { type: log.type, children: ["[", new Date(log.timestamp).toLocaleTimeString(), "] ", log.component, ": ", log.message] }, log.id)); }), logs.length === 0 && (_jsx(LogEntry, { type: "info", children: "No logs yet. Start recording to capture component activity." }))] })] }));
 };
 var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9;

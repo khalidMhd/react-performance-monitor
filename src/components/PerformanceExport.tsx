@@ -1,5 +1,5 @@
-import React from 'react';
-import { usePerformanceContext } from '../context/PerformanceContext';
+import React, { useMemo } from 'react';
+import { usePerformanceMonitorContext } from './PerformanceMonitorContext';
 import { Line } from 'react-chartjs-2';
 import styled from '@emotion/styled';
 import {
@@ -12,6 +12,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import type { ComponentMetrics } from '../types';
 
 // Register Chart.js components
 ChartJS.register(
@@ -74,10 +75,30 @@ const ChartTitle = styled.h3`
 `;
 
 export const PerformanceExport: React.FC = () => {
-  const { metrics } = usePerformanceContext();
+  const { getAllMetrics } = usePerformanceMonitorContext();
+  
+  // Convert metrics from monitor context to the format needed for charts
+  const components = useMemo<Record<string, ComponentMetrics>>(() => {
+    const allMetrics = getAllMetrics();
+    const result: Record<string, ComponentMetrics> = {};
+    
+    Object.entries(allMetrics).forEach(([name, metric]) => {
+      result[name] = {
+        componentName: name,
+        renderCount: metric.renderCount,
+        mountTime: metric.mountTime,
+        updateTimes: metric.updateTimes || [],
+        lastRenderTime: metric.lastRenderTime,
+        totalRenderTime: metric.totalRenderTime,
+        unnecessaryRenders: metric.unnecessaryRenders || 0
+      };
+    });
+    
+    return result;
+  }, [getAllMetrics]);
 
   const exportToJSON = () => {
-    const dataStr = JSON.stringify(metrics, null, 2);
+    const dataStr = JSON.stringify(components, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
@@ -90,9 +111,9 @@ export const PerformanceExport: React.FC = () => {
   };
 
   const exportToCSV = () => {
-    const components = Object.values(metrics.components);
+    const componentsArray = Object.values(components);
     const headers = ['Component', 'Render Count', 'Mount Time', 'Total Render Time', 'Unnecessary Renders', 'Avg Update Time'];
-    const rows = components.map(comp => [
+    const rows = componentsArray.map(comp => [
       comp.componentName,
       comp.renderCount,
       comp.mountTime.toFixed(2),
@@ -121,17 +142,17 @@ export const PerformanceExport: React.FC = () => {
 
   // Prepare data for render time chart
   const renderTimeChartData = {
-    labels: Object.keys(metrics.components),
+    labels: Object.keys(components),
     datasets: [
       {
         label: 'Total Render Time (ms)',
-        data: Object.values(metrics.components).map(comp => comp.totalRenderTime),
+        data: Object.values(components).map(comp => comp.totalRenderTime),
         borderColor: 'rgb(75, 192, 192)',
         tension: 0.1,
       },
       {
         label: 'Mount Time (ms)',
-        data: Object.values(metrics.components).map(comp => comp.mountTime),
+        data: Object.values(components).map(comp => comp.mountTime),
         borderColor: 'rgb(255, 99, 132)',
         tension: 0.1,
       },
@@ -140,17 +161,17 @@ export const PerformanceExport: React.FC = () => {
 
   // Prepare data for render count chart
   const renderCountChartData = {
-    labels: Object.keys(metrics.components),
+    labels: Object.keys(components),
     datasets: [
       {
         label: 'Render Count',
-        data: Object.values(metrics.components).map(comp => comp.renderCount),
+        data: Object.values(components).map(comp => comp.renderCount),
         borderColor: 'rgb(53, 162, 235)',
         tension: 0.1,
       },
       {
         label: 'Unnecessary Renders',
-        data: Object.values(metrics.components).map(comp => comp.unnecessaryRenders),
+        data: Object.values(components).map(comp => comp.unnecessaryRenders),
         borderColor: 'rgb(255, 159, 64)',
         tension: 0.1,
       },

@@ -16,6 +16,8 @@ interface PerformanceMonitorContextValue {
   memoryMetrics: MemoryMetrics;
   updateNetworkMetrics: (metrics: NetworkMetrics) => void;
   updateMemoryMetrics: (metrics: MemoryMetrics) => void;
+  getAllMetrics: () => Record<string, PerformanceMetric>;
+  resetAllMetrics: () => void;
 }
 
 const initialNetworkMetrics: NetworkMetrics = {
@@ -49,6 +51,9 @@ export const PerformanceMonitorProvider: React.FC<PerformanceMonitorProviderProp
   });
   const [networkMetrics, setNetworkMetrics] = useState<NetworkMetrics>(initialNetworkMetrics);
   const [memoryMetrics, setMemoryMetrics] = useState<MemoryMetrics>(initialMemoryMetrics);
+  
+  // Store metrics in a ref to avoid re-renders
+  const metricsRef = useRef<Record<string, PerformanceMetric>>({});
 
   const emitWarning = useCallback((warning: PerformanceWarning) => {
     subscribersRef.current.forEach((subscriber) => {
@@ -63,6 +68,9 @@ export const PerformanceMonitorProvider: React.FC<PerformanceMonitorProviderProp
     if (configRef.current.excludeComponents?.includes(metric.componentName)) {
       return;
     }
+    
+    // Store the metric
+    metricsRef.current[metric.componentName] = metric;
 
     // Notify subscribers
     subscribersRef.current.forEach((subscriber) => {
@@ -108,6 +116,18 @@ export const PerformanceMonitorProvider: React.FC<PerformanceMonitorProviderProp
   }, []);
 
   const getConfig = useCallback(() => configRef.current, []);
+  
+  const getAllMetrics = useCallback(() => {
+    return { ...metricsRef.current };
+  }, []);
+  
+  const resetAllMetrics = useCallback(() => {
+    metricsRef.current = {};
+    // Notify subscribers about reset
+    subscribersRef.current.forEach((subscriber) => {
+      subscriber.onReset?.();
+    });
+  }, []);
 
   const updateNetworkMetrics = useCallback((metrics: NetworkMetrics) => {
     setNetworkMetrics(metrics);
@@ -124,7 +144,9 @@ export const PerformanceMonitorProvider: React.FC<PerformanceMonitorProviderProp
     networkMetrics,
     memoryMetrics,
     updateNetworkMetrics,
-    updateMemoryMetrics
+    updateMemoryMetrics,
+    getAllMetrics,
+    resetAllMetrics
   };
 
   return (
