@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { usePerformanceContext } from '../context/PerformanceContext';
+import { usePerformanceMonitorContext } from './PerformanceMonitorContext';
 import type { ComponentMetrics } from '../types';
 import styled from '@emotion/styled';
 
@@ -192,43 +192,45 @@ const ComponentTable: React.FC<ComponentTableProps> = ({ components }) => {
  * This component must be used within a PerformanceProvider context.
  */
 export const PerformanceDashboard: React.FC = () => {
-  // Use the performance context directly
-  const { metrics, resetMetrics, config } = usePerformanceContext();
+  const { getAllMetrics, resetAllMetrics, getConfig } = usePerformanceMonitorContext();
   const [filter, setFilter] = useState('');
 
-  // Calculate derived metrics
-  const componentCount = Object.keys(metrics.components).length;
-  const totalRenderCount = Object.values(metrics.components).reduce(
-    (sum, metric) => sum + metric.renderCount, 0
-  );
-  const totalUnnecessaryRenders = Object.values(metrics.components).reduce(
-    (sum, metric) => sum + metric.unnecessaryRenders, 0
-  );
+  // Get current metrics
+  const metrics = getAllMetrics();
+  const config = getConfig();
 
-  // Filter components if a filter is applied
+  // Calculate derived metrics
+  const componentCount = Object.keys(metrics).length;
+  const totalRenderCount = Object.values(metrics).reduce((sum, m) => sum + m.renderCount, 0);
+  const totalRenderTime = Object.values(metrics).reduce((sum, m) => sum + m.totalRenderTime, 0);
+  const unnecessaryRenderCount = Object.values(metrics).reduce((sum, m) => sum + m.unnecessaryRenders, 0);
+
+  // Filter components based on search
   const filteredComponents = useMemo(() => {
-    if (!filter) return metrics.components;
-    
-    return Object.entries(metrics.components).reduce((acc, [name, metric]) => {
-      if (name.toLowerCase().includes(filter.toLowerCase())) {
+    if (!filter) return metrics;
+    const lowerFilter = filter.toLowerCase();
+    return Object.entries(metrics).reduce((acc, [name, metric]) => {
+      if (name.toLowerCase().includes(lowerFilter)) {
         acc[name] = metric;
       }
       return acc;
     }, {} as Record<string, ComponentMetrics>);
-  }, [metrics.components, filter]);
+  }, [metrics, filter]);
+
+  if (!config.enabled) {
+    return (
+      <DashboardContainer>
+        <Alert>Performance monitoring is currently disabled.</Alert>
+      </DashboardContainer>
+    );
+  }
 
   return (
     <DashboardContainer>
       <Header>
         <Title>Performance Dashboard</Title>
-        <ResetButton onClick={resetMetrics}>Reset Metrics</ResetButton>
+        <ResetButton onClick={resetAllMetrics}>Reset Metrics</ResetButton>
       </Header>
-
-      {componentCount === 0 && (
-        <Alert>
-          No performance metrics collected yet. Interact with the application to generate metrics.
-        </Alert>
-      )}
 
       <MetricsGrid>
         <MetricCard
@@ -239,26 +241,19 @@ export const PerformanceDashboard: React.FC = () => {
         <MetricCard
           title="Total Renders"
           value={totalRenderCount}
-          description="Sum of all component renders"
+          description="Total number of render operations"
         />
         <MetricCard
           title="Total Render Time"
-          value={`${metrics.totalRenderTime.toFixed(2)}ms`}
+          value={`${totalRenderTime.toFixed(2)}ms`}
           description="Cumulative rendering time"
         />
         <MetricCard
           title="Unnecessary Renders"
-          value={totalUnnecessaryRenders}
+          value={unnecessaryRenderCount}
           description="Renders that could have been avoided"
         />
       </MetricsGrid>
-
-      {metrics.slowestComponent && (
-        <Alert>
-          Slowest component: <strong>{metrics.slowestComponent}</strong> with{' '}
-          {metrics.components[metrics.slowestComponent]?.totalRenderTime.toFixed(2)}ms total render time
-        </Alert>
-      )}
 
       {componentCount > 0 && (
         <div style={{ marginBottom: '16px' }}>
@@ -279,12 +274,6 @@ export const PerformanceDashboard: React.FC = () => {
       )}
 
       <ComponentTable components={filteredComponents} />
-
-      {config.enableLogging && (
-        <Alert style={{ background: '#e0f2fe', borderLeftColor: '#0ea5e9', color: '#0369a1' }}>
-          Performance logging is enabled. Check your console for detailed metrics.
-        </Alert>
-      )}
     </DashboardContainer>
   );
 }; 

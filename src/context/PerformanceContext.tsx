@@ -36,15 +36,14 @@ function resolveUpdate<T>(update: MetricUpdate<T>, prevValue: T): T {
   return update;
 }
 
-type MetricValue<K extends ComponentMetricKey> = ComponentMetrics[K];
-type MetricUpdateValue<K extends ComponentMetricKey> = MetricUpdate<MetricValue<K>>;
+type MetricUpdateValue<K extends ComponentMetricKey> = MetricUpdate<ComponentMetrics[K]>;
 
 function resolveMetricUpdate<K extends ComponentMetricKey>(
   key: K,
   update: MetricUpdateValue<K>,
-  currentValue: MetricValue<K>
-): MetricValue<K> {
-  return resolveUpdate(update, currentValue);
+  prevValue: ComponentMetrics[K]
+): ComponentMetrics[K] {
+  return resolveUpdate(update, prevValue);
 }
 
 function findSlowestComponent(components: Record<string, ComponentMetrics>): string | null {
@@ -54,6 +53,13 @@ function findSlowestComponent(components: Record<string, ComponentMetrics>): str
     }
     return slowest;
   }, null as string | null);
+}
+
+// Calculate total render time across all components
+function calculateTotalRenderTime(components: Record<string, ComponentMetrics>): number {
+  return Object.values(components).reduce((total, component) => {
+    return total + component.totalRenderTime;
+  }, 0);
 }
 
 export const PerformanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -97,12 +103,16 @@ export const PerformanceProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       // Find slowest component
       const slowestComponent = findSlowestComponent(updatedComponents);
+      
+      // Calculate total render time across all components
+      const totalRenderTime = calculateTotalRenderTime(updatedComponents);
 
       // Return new metrics state
       return {
         ...prevMetrics,
         components: updatedComponents,
         slowestComponent,
+        totalRenderTime,
       };
     });
   }, []);

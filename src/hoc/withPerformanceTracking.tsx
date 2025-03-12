@@ -39,7 +39,7 @@ export function withPerformanceTracking<P extends object>(
       return false;
     };
     
-    // Before render
+    // Set render start time before render
     renderStartTime.current = performance.now();
     
     // After render
@@ -63,7 +63,7 @@ export function withPerformanceTracking<P extends object>(
         }
       }
       
-      // Record the metric
+      // Record the metric with the current total render time
       recordMetric({
         componentName: displayName,
         renderCount: renderCount.current,

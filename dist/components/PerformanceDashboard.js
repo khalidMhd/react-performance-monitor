@@ -4,7 +4,7 @@ var __makeTemplateObject = (this && this.__makeTemplateObject) || function (cook
 };
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useMemo, useState } from 'react';
-import { usePerformanceContext } from '../context/PerformanceContext';
+import { usePerformanceMonitorContext } from './PerformanceMonitorContext';
 import styled from '@emotion/styled';
 var DashboardContainer = styled.div(templateObject_1 || (templateObject_1 = __makeTemplateObject(["\n  padding: 20px;\n  max-width: 1200px;\n  margin: 0 auto;\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;\n  color: #333;\n  background-color: #f9f9f9;\n  border-radius: 8px;\n  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);\n"], ["\n  padding: 20px;\n  max-width: 1200px;\n  margin: 0 auto;\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;\n  color: #333;\n  background-color: #f9f9f9;\n  border-radius: 8px;\n  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);\n"])));
 var Header = styled.div(templateObject_2 || (templateObject_2 = __makeTemplateObject(["\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  margin-bottom: 24px;\n  border-bottom: 1px solid #eee;\n  padding-bottom: 16px;\n"], ["\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  margin-bottom: 24px;\n  border-bottom: 1px solid #eee;\n  padding-bottom: 16px;\n"])));
@@ -42,32 +42,38 @@ var ComponentTable = function (_a) {
  * This component must be used within a PerformanceProvider context.
  */
 export var PerformanceDashboard = function () {
-    var _a;
-    // Use the performance context directly
-    var _b = usePerformanceContext(), metrics = _b.metrics, resetMetrics = _b.resetMetrics, config = _b.config;
-    var _c = useState(''), filter = _c[0], setFilter = _c[1];
+    var _a = usePerformanceMonitorContext(), getAllMetrics = _a.getAllMetrics, resetAllMetrics = _a.resetAllMetrics, getConfig = _a.getConfig;
+    var _b = useState(''), filter = _b[0], setFilter = _b[1];
+    // Get current metrics
+    var metrics = getAllMetrics();
+    var config = getConfig();
     // Calculate derived metrics
-    var componentCount = Object.keys(metrics.components).length;
-    var totalRenderCount = Object.values(metrics.components).reduce(function (sum, metric) { return sum + metric.renderCount; }, 0);
-    var totalUnnecessaryRenders = Object.values(metrics.components).reduce(function (sum, metric) { return sum + metric.unnecessaryRenders; }, 0);
-    // Filter components if a filter is applied
+    var componentCount = Object.keys(metrics).length;
+    var totalRenderCount = Object.values(metrics).reduce(function (sum, m) { return sum + m.renderCount; }, 0);
+    var totalRenderTime = Object.values(metrics).reduce(function (sum, m) { return sum + m.totalRenderTime; }, 0);
+    var unnecessaryRenderCount = Object.values(metrics).reduce(function (sum, m) { return sum + m.unnecessaryRenders; }, 0);
+    // Filter components based on search
     var filteredComponents = useMemo(function () {
         if (!filter)
-            return metrics.components;
-        return Object.entries(metrics.components).reduce(function (acc, _a) {
+            return metrics;
+        var lowerFilter = filter.toLowerCase();
+        return Object.entries(metrics).reduce(function (acc, _a) {
             var name = _a[0], metric = _a[1];
-            if (name.toLowerCase().includes(filter.toLowerCase())) {
+            if (name.toLowerCase().includes(lowerFilter)) {
                 acc[name] = metric;
             }
             return acc;
         }, {});
-    }, [metrics.components, filter]);
-    return (_jsxs(DashboardContainer, { children: [_jsxs(Header, { children: [_jsx(Title, { children: "Performance Dashboard" }), _jsx(ResetButton, { onClick: resetMetrics, children: "Reset Metrics" })] }), componentCount === 0 && (_jsx(Alert, { children: "No performance metrics collected yet. Interact with the application to generate metrics." })), _jsxs(MetricsGrid, { children: [_jsx(MetricCard, { title: "Components Tracked", value: componentCount, description: "Number of components being monitored" }), _jsx(MetricCard, { title: "Total Renders", value: totalRenderCount, description: "Sum of all component renders" }), _jsx(MetricCard, { title: "Total Render Time", value: "".concat(metrics.totalRenderTime.toFixed(2), "ms"), description: "Cumulative rendering time" }), _jsx(MetricCard, { title: "Unnecessary Renders", value: totalUnnecessaryRenders, description: "Renders that could have been avoided" })] }), metrics.slowestComponent && (_jsxs(Alert, { children: ["Slowest component: ", _jsx("strong", { children: metrics.slowestComponent }), " with", ' ', (_a = metrics.components[metrics.slowestComponent]) === null || _a === void 0 ? void 0 : _a.totalRenderTime.toFixed(2), "ms total render time"] })), componentCount > 0 && (_jsx("div", { style: { marginBottom: '16px' }, children: _jsx("input", { type: "text", placeholder: "Filter components...", value: filter, onChange: function (e) { return setFilter(e.target.value); }, style: {
+    }, [metrics, filter]);
+    if (!config.enabled) {
+        return (_jsx(DashboardContainer, { children: _jsx(Alert, { children: "Performance monitoring is currently disabled." }) }));
+    }
+    return (_jsxs(DashboardContainer, { children: [_jsxs(Header, { children: [_jsx(Title, { children: "Performance Dashboard" }), _jsx(ResetButton, { onClick: resetAllMetrics, children: "Reset Metrics" })] }), _jsxs(MetricsGrid, { children: [_jsx(MetricCard, { title: "Components Tracked", value: componentCount, description: "Number of components being monitored" }), _jsx(MetricCard, { title: "Total Renders", value: totalRenderCount, description: "Total number of render operations" }), _jsx(MetricCard, { title: "Total Render Time", value: "".concat(totalRenderTime.toFixed(2), "ms"), description: "Cumulative rendering time" }), _jsx(MetricCard, { title: "Unnecessary Renders", value: unnecessaryRenderCount, description: "Renders that could have been avoided" })] }), componentCount > 0 && (_jsx("div", { style: { marginBottom: '16px' }, children: _jsx("input", { type: "text", placeholder: "Filter components...", value: filter, onChange: function (e) { return setFilter(e.target.value); }, style: {
                         padding: '8px 12px',
                         borderRadius: '4px',
                         border: '1px solid #ddd',
                         width: '100%',
                         fontSize: '14px'
-                    } }) })), _jsx(ComponentTable, { components: filteredComponents }), config.enableLogging && (_jsx(Alert, { style: { background: '#e0f2fe', borderLeftColor: '#0ea5e9', color: '#0369a1' }, children: "Performance logging is enabled. Check your console for detailed metrics." }))] }));
+                    } }) })), _jsx(ComponentTable, { components: filteredComponents })] }));
 };
 var templateObject_1, templateObject_2, templateObject_3, templateObject_4, templateObject_5, templateObject_6, templateObject_7, templateObject_8, templateObject_9, templateObject_10, templateObject_11, templateObject_12, templateObject_13, templateObject_14, templateObject_15;

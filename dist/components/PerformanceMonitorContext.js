@@ -27,8 +27,8 @@ export var PerformanceMonitorProvider = function (_a) {
     var configRef = useRef(__assign({ enabled: true, logToConsole: true, includeWarnings: true }, config));
     var _c = useState(initialNetworkMetrics), networkMetrics = _c[0], setNetworkMetrics = _c[1];
     var _d = useState(initialMemoryMetrics), memoryMetrics = _d[0], setMemoryMetrics = _d[1];
-    // Store metrics in a ref to avoid re-renders
-    var metricsRef = useRef({});
+    // Use state instead of ref for metrics to trigger re-renders
+    var _e = useState({}), metrics = _e[0], setMetrics = _e[1];
     var emitWarning = useCallback(function (warning) {
         subscribersRef.current.forEach(function (subscriber) {
             var _a;
@@ -43,8 +43,11 @@ export var PerformanceMonitorProvider = function (_a) {
         if ((_a = configRef.current.excludeComponents) === null || _a === void 0 ? void 0 : _a.includes(metric.componentName)) {
             return;
         }
-        // Store the metric
-        metricsRef.current[metric.componentName] = metric;
+        // Update metrics state to trigger re-render
+        setMetrics(function (prevMetrics) {
+            var _a;
+            return (__assign(__assign({}, prevMetrics), (_a = {}, _a[metric.componentName] = metric, _a)));
+        });
         // Notify subscribers
         subscribersRef.current.forEach(function (subscriber) {
             subscriber.onMetricUpdate(metric);
@@ -84,10 +87,10 @@ export var PerformanceMonitorProvider = function (_a) {
     }, []);
     var getConfig = useCallback(function () { return configRef.current; }, []);
     var getAllMetrics = useCallback(function () {
-        return __assign({}, metricsRef.current);
-    }, []);
+        return metrics; // Return state instead of ref
+    }, [metrics]); // Add metrics as dependency
     var resetAllMetrics = useCallback(function () {
-        metricsRef.current = {};
+        setMetrics({});
         // Notify subscribers about reset
         subscribersRef.current.forEach(function (subscriber) {
             var _a;

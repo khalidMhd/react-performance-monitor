@@ -52,8 +52,8 @@ export const PerformanceMonitorProvider: React.FC<PerformanceMonitorProviderProp
   const [networkMetrics, setNetworkMetrics] = useState<NetworkMetrics>(initialNetworkMetrics);
   const [memoryMetrics, setMemoryMetrics] = useState<MemoryMetrics>(initialMemoryMetrics);
   
-  // Store metrics in a ref to avoid re-renders
-  const metricsRef = useRef<Record<string, PerformanceMetric>>({});
+  // Use state instead of ref for metrics to trigger re-renders
+  const [metrics, setMetrics] = useState<Record<string, PerformanceMetric>>({});
 
   const emitWarning = useCallback((warning: PerformanceWarning) => {
     subscribersRef.current.forEach((subscriber) => {
@@ -69,8 +69,11 @@ export const PerformanceMonitorProvider: React.FC<PerformanceMonitorProviderProp
       return;
     }
     
-    // Store the metric
-    metricsRef.current[metric.componentName] = metric;
+    // Update metrics state to trigger re-render
+    setMetrics(prevMetrics => ({
+      ...prevMetrics,
+      [metric.componentName]: metric
+    }));
 
     // Notify subscribers
     subscribersRef.current.forEach((subscriber) => {
@@ -118,11 +121,11 @@ export const PerformanceMonitorProvider: React.FC<PerformanceMonitorProviderProp
   const getConfig = useCallback(() => configRef.current, []);
   
   const getAllMetrics = useCallback(() => {
-    return { ...metricsRef.current };
-  }, []);
+    return metrics;  // Return state instead of ref
+  }, [metrics]);  // Add metrics as dependency
   
   const resetAllMetrics = useCallback(() => {
-    metricsRef.current = {};
+    setMetrics({});
     // Notify subscribers about reset
     subscribersRef.current.forEach((subscriber) => {
       subscriber.onReset?.();

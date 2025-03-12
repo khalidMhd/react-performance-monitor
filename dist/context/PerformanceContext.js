@@ -34,8 +34,8 @@ function resolveUpdate(update, prevValue) {
     }
     return update;
 }
-function resolveMetricUpdate(key, update, currentValue) {
-    return resolveUpdate(update, currentValue);
+function resolveMetricUpdate(key, update, prevValue) {
+    return resolveUpdate(update, prevValue);
 }
 function findSlowestComponent(components) {
     return Object.entries(components).reduce(function (slowest, _a) {
@@ -45,6 +45,12 @@ function findSlowestComponent(components) {
         }
         return slowest;
     }, null);
+}
+// Calculate total render time across all components
+function calculateTotalRenderTime(components) {
+    return Object.values(components).reduce(function (total, component) {
+        return total + component.totalRenderTime;
+    }, 0);
 }
 export var PerformanceProvider = function (_a) {
     var children = _a.children;
@@ -78,8 +84,10 @@ export var PerformanceProvider = function (_a) {
             var updatedComponents = __assign(__assign({}, prevMetrics.components), (_a = {}, _a[componentName] = updatedComponentMetrics, _a));
             // Find slowest component
             var slowestComponent = findSlowestComponent(updatedComponents);
+            // Calculate total render time across all components
+            var totalRenderTime = calculateTotalRenderTime(updatedComponents);
             // Return new metrics state
-            return __assign(__assign({}, prevMetrics), { components: updatedComponents, slowestComponent: slowestComponent });
+            return __assign(__assign({}, prevMetrics), { components: updatedComponents, slowestComponent: slowestComponent, totalRenderTime: totalRenderTime });
         });
     }, []);
     var resetMetrics = useCallback(function () {
